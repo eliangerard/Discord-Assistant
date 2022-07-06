@@ -1,0 +1,25 @@
+{
+  "name": "discordassistant",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "discord.js": "^12.5.1",
+    "ffmpeg-static": "^4.2.7",
+    "google-assistant": "^0.7.0",
+    "node-witai-speech": "^1.0.2",
+    "opusscript": "^0.0.8",
+    "request": "^2.88.2",
+    "underscore": "^1.13.1",
+    "wav": "^1.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eliangerard/Discord-Assistant"
+  },
+  "author": "Elian Gerard",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/eliangerard/Discord-Assistant/issues"
+  }
+}

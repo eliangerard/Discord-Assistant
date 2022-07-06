@@ -1,0 +1,13 @@
+
+{
+    "discord_token": "",
+    "wit_ai_token": "",
+    "prefix": "*",
+    "max_speaking_length": 20,
+    "min_speaking_length": 1,
+    "talk_commands": "ok google-okay google-hey google",
+    "google_lang":"es-MX",
+    "latitude": 0,
+    "longitude": 0,
+    "client_secret_google_dir": "./keys/client_secret_your_file.apps.googleusercontent.com.json"
+}
