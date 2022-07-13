@@ -11,7 +11,7 @@ const client = new Discord.Client();
 client.config = require("./config.json");
 const prefix = client.config.prefix;
 
-function loadConfig() {
+const loadConfig = () => {
     if (!fs.existsSync("config.json")) {
         client.config.discord_token = process.env.DISCORD_TOK;
         client.config.wit_ai_token = process.env.WITAPIKEY;
@@ -22,15 +22,15 @@ function loadConfig() {
 loadConfig();
 
 client.on('ready', () => {
-    console.log(`Bot ${client.user.tag} inicializado`)
+    console.log(`Bot ${client.user.tag} inicializado`);
 });
 
-var texto = false;
+let texto = false;
 let voice_Connection = null;
-var message = null;
-var recording = false;
-var usuario = null;
-var waitingForResponse = false;
+let message = null;
+let recording = false;
+let usuario = null;
+let waitingForResponse = false;
 
 client.config.assistant = {
     auth: {
@@ -56,7 +56,6 @@ client.config.assistant = {
 };
 
 const startConversation = (conversation) => {
-    // setup the conversation
     conversation
       .on('response', text => {
           if(message.member.voice.channel == null && text.length > 0){
@@ -64,7 +63,6 @@ const startConversation = (conversation) => {
             recording = false;
             startRecording = false;
           }
-              
       })
       .on('audio-data', (buffer) => {         
           if(message.member.voice.channel != null){
@@ -102,11 +100,11 @@ const startConversation = (conversation) => {
             conversation.end();                
         }
       })
-      // catch any errors
       .on('error', (error) => {
         console.log('Conversation Error:', error);
       });
 };
+
 client.assistant = new GoogleAssistant(client.config.assistant.auth);
 
 client.assistant
@@ -114,12 +112,12 @@ client.assistant
 .on('error', (error) => {
     console.log('Assistant Error:', error);
 });
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
+const sleep = (ms) => {
+    return new Promise((resolve) => {
+        setTimeout(resolve, ms);
+    });
 }
-async function convertAudio(input) {
+const convertAudio = async (input) => {
     try {
         // stereo to mono channel
         const data = new Int16Array(input)
@@ -137,17 +135,22 @@ async function convertAudio(input) {
 }
 
 client.on('message', async (msg) => {
+    
+    let partsMsg;
+
     if (!msg.content.startsWith(prefix) || !msg.guild) return;
     msg.content = msg.content.substring(prefix.length);
-    message = msg
-    var partsMsg = msg.content.split(' ');
+    message = msg;
+    partsMsg = msg.content.split(' ');
     console.log(partsMsg);
+    
     if (partsMsg[0] == "join") {
         if (!msg.member.voice.channelID) {
             return msg.reply('Error: please join a voice channel first.');
         }
         return connect(msg);
     }
+
     if(partsMsg[0] == "stop" || partsMsg[0] == "dc"|| partsMsg[0] == "leave"){
         voice_Connection.disconnect();
         texto = false;
@@ -158,11 +161,13 @@ client.on('message', async (msg) => {
         waitingForResponse = false;
         return;
     }
+
     if(recording)
-        return msg.delete()          
-    partsMsg.shift()
-    pregunta = ""
-    partsMsg.forEach(parte => pregunta+=parte+" ")
+        return msg.delete();
+
+    partsMsg.shift();
+    pregunta = "";
+    partsMsg.forEach(parte => pregunta+=parte+" ");
     console.log(pregunta);
     client.config.assistant.conversation.textQuery = pregunta;
     message = msg;
@@ -175,7 +180,7 @@ client.on('message', async (msg) => {
     }
     client.assistant.start(client.config.assistant.conversation, startConversation);        
 });
-async function connect(msg) {
+const connect = async (msg) => {
     try {
         let voice_Channel = msg.member.voice.channel;
         voice_Connection = await voice_Channel.join();
@@ -192,51 +197,52 @@ async function connect(msg) {
     return;
 }
 
-function speakDetector(voice_Connection) {
+const speakDetector = (voice_Connection) => {
     voice_Connection.on('speaking', async (user, speaking) => {
         if (speaking.bitfield == 0 || user.bot || (waitingForResponse && (usuario != user.username)))
-            return
-        console.log(`Escuchando a ${user.username}`)
+            return;
+        console.log(`Escuchando a ${user.username}`);
         // this creates a 16-bit signed PCM, stereo 48KHz stream
-        const audioStream = voice_Connection.receiver.createStream(user, { mode: 'pcm' })
+        const audioStream = voice_Connection.receiver.createStream(user, { mode: 'pcm' });
         audioStream.on('error',  (e) => { 
-            console.log('audioStream: ' + e)
+            console.log('audioStream: ' + e);
         });
         let buffer = [];
         audioStream.on('data', (data) => {
-            buffer.push(data)
+            buffer.push(data);
         })
         audioStream.on('end', async () => {
-            buffer = Buffer.concat(buffer)
+            buffer = Buffer.concat(buffer);
             const duration = buffer.length / 48000 / 4;
             if (duration < client.config.min_speaking_length || duration > client.config.max_speaking_length) {
-                console.log("TOO SHORT / TOO LONG; SKIPPING")
+                console.log("TOO SHORT / TOO LONG; SKIPPING");
                 return;
             }
 
             try {
-                let new_buffer = await convertAudio(buffer)
+                let new_buffer = await convertAudio(buffer);
                 let out = await transcribeWitai(new_buffer);
                 if (out != null)
                     processCommandsQuery(out, user.username);
             } catch (e) {
-                console.log('tmpraw rename: ' + e)
+                console.log('tmpraw rename: ' + e);
             }
         })    
     })
 }
-function processCommandsQuery(query, username) {    
+const processCommandsQuery = (query, username) => {    
     if (!query || !query.length)
         return;
     if(waitingForResponse && usuario == username){
-        startRecording = true
-        recording = true
+        startRecording = true;
+        recording = true;
         client.config.assistant.conversation.textQuery = query;
         return client.assistant.start(client.config.assistant.conversation, startConversation);        
     }
     query = query.toLowerCase(); 
     query = query.replaceAll("?","").replaceAll("¿","").replaceAll("!","").replaceAll("¡","");
-    console.log("Query: "+query)
+    console.log("Query: "+query);
+
     if (query && query.length) {
         talkCommands = client.config.talk_commands.split("-");
         talkCommands.forEach((command) => {
@@ -245,12 +251,13 @@ function processCommandsQuery(query, username) {
                 usuario = username;
                 waitingForResponse = true;
             }
-        })
+        });
     }   
 }
+
 // WitAI
 let witAI_lastcallTS = null;
-async function transcribeWitai(buffer) {
+const transcribeWitai = async (buffer) => {
     try {
         // ensure we do not send more than one request per second
         if (witAI_lastcallTS != null) {
@@ -266,20 +273,19 @@ async function transcribeWitai(buffer) {
     }
 
     try {
-        console.log('Transcribiendo...')
+        console.log('Transcribiendo...');
         const extractSpeechIntent = util.promisify(witClient.extractSpeechIntent);
         var stream = Readable.from(buffer);
-        const contenttype = "audio/raw;encoding=signed-integer;bits=16;rate=48k;endian=little"
-        var output = await extractSpeechIntent(client.config.wit_ai_token, stream, contenttype)        
+        const contenttype = "audio/raw;encoding=signed-integer;bits=16;rate=48k;endian=little";
+        var output = await extractSpeechIntent(client.config.wit_ai_token, stream, contenttype);     
         witAI_lastcallTS = Math.floor(new Date());        
-        if(output!=null && output.length){
-            output = output.replaceAll(/(\r\n|\n|\r)/gm, "")
-            output = output.replaceAll("}{", "},{")
-            output = "["+output+"]"
-            outJSON = JSON.parse(output)
-            outJSON = outJSON[outJSON.length-1]
-            console.log("TL: "+outJSON.text)
-            stream.destroy()
+
+        if(output!=null && output.length) {
+            output = "["+( output.replaceAll(/(\r\n|\n|\r)/gm, "").replaceAll("}{", "},{") )+"]";
+            outJSON = JSON.parse(output);
+            outJSON = outJSON[outJSON.length-1];
+            console.log("TL: "+outJSON.text);
+            stream.destroy();
             return outJSON.text;
         }     
         return null;
